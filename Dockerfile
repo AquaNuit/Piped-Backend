@@ -6,8 +6,11 @@ WORKDIR /app
 # Copy all files
 COPY . .
 
-# Run Gradle to build the Piped backend
-RUN gradle shadowJar
+# Give execution permissions to gradlew
+RUN chmod +x gradlew
+
+# Build the Piped backend
+RUN ./gradlew shadowJar
 
 # Use a lightweight Java image to run the final app
 FROM eclipse-temurin:17-jdk
