@@ -1,26 +1,37 @@
 # Use OpenJDK as the base image
-FROM openjdk:17-jdk-slim
-
-# Install required dependencies
-RUN apt-get update && apt-get install -y curl unzip && rm -rf /var/lib/apt/lists/*
-
-# Install Gradle manually (since Render does not support ./gradlew)
-RUN curl -sLo gradle.zip https://services.gradle.org/distributions/gradle-8.5-bin.zip \
-    && unzip gradle.zip -d /opt/ \
-    && rm gradle.zip \
-    && ln -s /opt/gradle-8.5/bin/gradle /usr/local/bin/gradle
+FROM openjdk:17-jdk-slim AS build
 
 # Set working directory
 WORKDIR /app
 
+# Install required dependencies
+RUN apt-get update && apt-get install -y curl unzip && rm -rf /var/lib/apt/lists/*
+
 # Copy all project files
 COPY . .
 
-# Build the backend using Gradle (without ./gradlew)
-RUN gradle shadowJar
+# Manually install Gradle Wrapper if not present
+RUN curl -sLo gradle-wrapper.zip https://services.gradle.org/distributions/gradle-8.5-bin.zip \
+    && unzip gradle-wrapper.zip -d /opt/ \
+    && rm gradle-wrapper.zip
 
-# Expose the backend port
+# Make sure Gradle Wrapper is executable
+RUN chmod +x gradlew
+
+# Build the Piped Backend using Gradle Wrapper
+RUN ./gradlew shadowJar
+
+# Start a new lightweight container for the final runtime
+FROM openjdk:17-jdk-slim
+
+# Set working directory
+WORKDIR /app
+
+# Copy the built JAR file from the build container
+COPY --from=build /app/build/libs/piped.jar /app/piped.jar
+
+# Expose port 8080
 EXPOSE 8080
 
-# Run the backend
-CMD ["java", "-jar", "build/libs/piped.jar"]
+# Run the Piped Backend
+CMD ["java", "-jar", "/app/piped.jar"]
