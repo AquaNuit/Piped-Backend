@@ -1,0 +1,21 @@
+version: "3"
+
+services:
+  piped-backend:
+    image: ghcr.io/team-piped/piped-backend:latest
+    container_name: piped-backend
+    restart: unless-stopped
+    environment:
+      - PORT=8080
+      - BACKEND_HOSTNAME=0.0.0.0
+      - MONGO_URI=${MONGO_URI}
+      - ENABLE_REGISTRATION=false
+    ports:
+      - "8080:8080"
+
+  piped-proxy:
+    image: ghcr.io/team-piped/piped-proxy:latest
+    container_name: piped-proxy
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
