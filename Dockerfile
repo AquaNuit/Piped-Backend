@@ -1,16 +1,24 @@
+# Use the official Gradle image
+FROM gradle:8-jdk17 AS build
+
+WORKDIR /app
+
+# Copy all files
+COPY . .
+
+# Run Gradle to build the Piped backend
+RUN gradle shadowJar
+
+# Use a lightweight Java image to run the final app
 FROM eclipse-temurin:17-jdk
 
 WORKDIR /app
 
-# Install Gradle manually
-RUN apt update && apt install -y gradle
+# Copy the built JAR from the build stage
+COPY --from=build /app/build/libs/piped.jar piped.jar
 
-# Copy repository files
-COPY . .
-
-# Run Gradle to build Piped Backend
-RUN gradle shadowJar
-
+# Expose the required port
 EXPOSE 8080
 
-CMD ["java", "-jar", "build/libs/piped.jar", "--server.port=${PORT}"]
+# Start the Piped Backend
+CMD ["java", "-jar", "piped.jar", "--server.port=${PORT}"]
