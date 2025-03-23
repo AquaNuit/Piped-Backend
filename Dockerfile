@@ -1,27 +1,26 @@
-# Use the official Gradle image
-FROM gradle:8-jdk17 AS build
+FROM node:lts-alpine AS build
 
-WORKDIR /app
+WORKDIR /app/
 
-# Copy all files
+RUN --mount=type=cache,target=/var/cache/apk \
+    apk add --no-cache \
+    curl
+
 COPY . .
 
-# Give execution permissions to gradlew
-RUN chmod +x gradlew
+RUN corepack enable && corepack prepare pnpm@latest --activate
 
-# Build the Piped backend
-RUN ./gradlew shadowJar
+RUN --mount=type=cache,target=/root/.local/share/pnpm \
+    --mount=type=cache,target=/app/node_modules \
+    pnpm install --prefer-offline && \
+    pnpm build && ./localizefonts.sh
 
-# Use a lightweight Java image to run the final app
-FROM eclipse-temurin:17-jdk
+FROM nginxinc/nginx-unprivileged:alpine
 
-WORKDIR /app
+COPY --chown=101:101 --from=build /app/dist/ /usr/share/nginx/html/
 
-# Copy the built JAR from the build stage
-COPY --from=build /app/build/libs/piped.jar piped.jar
+COPY --chown=101:101 docker/nginx.conf /etc/nginx/conf.d/default.conf
 
-# Expose the required port
-EXPOSE 8080
+COPY docker/entrypoint.sh /entrypoint.sh
 
-# Start the Piped Backend
-CMD ["java", "-jar", "piped.jar", "--server.port=${PORT}"]
+ENTRYPOINT [ "/entrypoint.sh" ]
