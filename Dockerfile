@@ -1,26 +1,26 @@
-FROM node:lts-alpine AS build
+# Use OpenJDK as the base image
+FROM openjdk:17-jdk-slim
 
-WORKDIR /app/
+# Install required dependencies
+RUN apt-get update && apt-get install -y curl unzip && rm -rf /var/lib/apt/lists/*
 
-RUN --mount=type=cache,target=/var/cache/apk \
-    apk add --no-cache \
-    curl
+# Install Gradle manually (since Render does not support `./gradlew`)
+RUN curl -sLo gradle.zip https://services.gradle.org/distributions/gradle-8.5-bin.zip \
+    && unzip gradle.zip -d /opt/ \
+    && rm gradle.zip \
+    && ln -s /opt/gradle-8.5/bin/gradle /usr/local/bin/gradle
 
+# Set working directory
+WORKDIR /app
+
+# Copy all project files
 COPY . .
 
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# Build the backend using Gradle
+RUN gradle shadowJar
 
-RUN --mount=type=cache,target=/root/.local/share/pnpm \
-    --mount=type=cache,target=/app/node_modules \
-    pnpm install --prefer-offline && \
-    pnpm build && ./localizefonts.sh
+# Expose the backend port
+EXPOSE 8080
 
-FROM nginxinc/nginx-unprivileged:alpine
-
-COPY --chown=101:101 --from=build /app/dist/ /usr/share/nginx/html/
-
-COPY --chown=101:101 docker/nginx.conf /etc/nginx/conf.d/default.conf
-
-COPY docker/entrypoint.sh /entrypoint.sh
-
-ENTRYPOINT [ "/entrypoint.sh" ]
+# Run the backend
+CMD ["java", "-jar", "build/libs/piped.jar"]
