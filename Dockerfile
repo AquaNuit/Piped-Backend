@@ -4,7 +4,7 @@ FROM openjdk:17-jdk-slim
 # Install required dependencies
 RUN apt-get update && apt-get install -y curl unzip && rm -rf /var/lib/apt/lists/*
 
-# Install Gradle manually (since Render does not support `./gradlew`)
+# Install Gradle manually (since Render does not support ./gradlew)
 RUN curl -sLo gradle.zip https://services.gradle.org/distributions/gradle-8.5-bin.zip \
     && unzip gradle.zip -d /opt/ \
     && rm gradle.zip \
@@ -16,7 +16,7 @@ WORKDIR /app
 # Copy all project files
 COPY . .
 
-# Build the backend using Gradle
+# Build the backend using Gradle (without ./gradlew)
 RUN gradle shadowJar
 
 # Expose the backend port
