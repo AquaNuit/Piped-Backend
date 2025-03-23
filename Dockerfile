@@ -5,7 +5,7 @@ FROM openjdk:17-jdk-slim AS build
 WORKDIR /app
 
 # Install required dependencies
-RUN apt-get update && apt-get install -y curl unzip wget && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y curl unzip wget git && rm -rf /var/lib/apt/lists/*
 
 # Install Gradle manually (because gradlew is missing)
 RUN wget https://services.gradle.org/distributions/gradle-8.5-bin.zip \
@@ -16,11 +16,14 @@ RUN wget https://services.gradle.org/distributions/gradle-8.5-bin.zip \
 ENV GRADLE_HOME=/opt/gradle-8.5
 ENV PATH="${GRADLE_HOME}/bin:${PATH}"
 
-# Copy all project files
-COPY . .
+# Clone the Piped backend repository (if needed)
+RUN git clone --depth 1 https://github.com/TeamPiped/Piped-Backend.git /app
 
-# Build the Piped Backend using Gradle
-RUN gradle shadowJar
+# Change to the backend directory
+WORKDIR /app
+
+# Run Gradle build (fix: use ./gradlew instead of global Gradle)
+RUN ./gradlew shadowJar || gradle shadowJar
 
 # Start a new lightweight container for the final runtime
 FROM openjdk:17-jdk-slim
