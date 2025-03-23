@@ -5,21 +5,22 @@ FROM openjdk:17-jdk-slim AS build
 WORKDIR /app
 
 # Install required dependencies
-RUN apt-get update && apt-get install -y curl unzip && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y curl unzip wget && rm -rf /var/lib/apt/lists/*
+
+# Install Gradle manually (because gradlew is missing)
+RUN wget https://services.gradle.org/distributions/gradle-8.5-bin.zip \
+    && unzip gradle-8.5-bin.zip -d /opt/ \
+    && rm gradle-8.5-bin.zip
+
+# Set Gradle environment variables
+ENV GRADLE_HOME=/opt/gradle-8.5
+ENV PATH="${GRADLE_HOME}/bin:${PATH}"
 
 # Copy all project files
 COPY . .
 
-# Manually install Gradle Wrapper if not present
-RUN curl -sLo gradle-wrapper.zip https://services.gradle.org/distributions/gradle-8.5-bin.zip \
-    && unzip gradle-wrapper.zip -d /opt/ \
-    && rm gradle-wrapper.zip
-
-# Make sure Gradle Wrapper is executable
-RUN chmod +x gradlew
-
-# Build the Piped Backend using Gradle Wrapper
-RUN ./gradlew shadowJar
+# Build the Piped Backend using Gradle
+RUN gradle shadowJar
 
 # Start a new lightweight container for the final runtime
 FROM openjdk:17-jdk-slim
